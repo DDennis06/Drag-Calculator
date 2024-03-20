@@ -1,4 +1,166 @@
 ##--------------------------------Libraries--------------------------------##
 import tkinter as tk
 import tkinter.ttk as ttk
+import math
+import matplotlib.pyplot as plt
 import os
+##--------------------------------Main GUI--------------------------------##
+class objtosave():
+    def __init__(self,givenname,givenshape,givencoefficient,givendiameter):
+        self.name = givenname
+        self.shape = givenshape
+        self.givencoefficient = givencoefficient
+        self.diameter = givendiameter
+class App():
+    def __init__(self,master):
+        self.chosenshape = ""
+        self.dragcoefficient = 0.0
+        self.shapename = ""
+        self.shapes = ["Half-Sphere","Cube/Rectangle","Long-Cylinder","Short-Cylinder","Streamlined-Body","Streamlined-Half-Body",]
+        self.homewin = master
+        style = ttk.Style()
+        style.configure("title.TLabel",font=("Arial",30))
+        style.configure("button.TButton",font=("Arial",15))
+        style.configure("sub.TLabel",font=("Arial",20))    
+        style.configure("text.TLabel",font=("Arial",15)) 
+        #objects
+        self.titlelabel = ttk.Label(
+            self.homewin,
+            style="title.TLabel",
+            text="Drag Coefficient Calculator"
+        )
+        self.shapeselectorlabel = ttk.Label(
+            self.homewin,
+            style="sub.TLabel",
+            text="Which shape is your frontal area:"
+        )
+        self.shapecurrent_var = tk.StringVar()
+        self.shapeselector = ttk.Combobox(self.homewin, textvariable=self.shapecurrent_var)
+        self.shapeselector.bind("<<ComboboxSelected>>", self.shapeselectorvaluefinder)
+        self.shapeselector["values"] = (self.shapes)
+        self.shapeselector['state'] = 'readonly'
+        self.shapenameentrylabel = ttk.Label(
+            self.homewin,
+            style="sub.TLabel",
+            text="Enter Name of Object:"
+        )
+        self.shapenameentry = ttk.Entry(
+            self.homewin
+        )
+        self.enterbutt_howin = ttk.Button(
+            self.homewin,
+            style="button.TButton",
+            text="Next Window",
+            command=self.dragcalcwin
+        )
+        self.titlelabel.pack()
+        self.shapenameentrylabel.pack()
+        self.shapenameentry.pack()
+        self.shapeselectorlabel.pack()
+        self.shapeselector.pack()
+        self.enterbutt_howin.pack()
+        self.homewin.mainloop()
+    def shapeselectorvaluefinder(self,event):
+        self.chosenshape =  self.shapeselector.get()
+    def dragcalcwin(self):
+        self.dcwin = tk.Toplevel(
+            self.homewin
+        )
+        style = ttk.Style()
+        style.configure("title.TLabel",font=("Arial",30))
+        style.configure("button.TButton",font=("Arial",15))
+        style.configure("sub.TLabel",font=("Arial",20))    
+        style.configure("text.TLabel",font=("Arial",15)) 
+        self.lengthentrylabel = ttk.Label(
+            self.dcwin,
+            style="sub.TLabel",
+            text="Enter Length"
+        )
+        self.lengthentry = ttk.Entry(
+            self.dcwin
+        )
+        self.widthentrylabel = ttk.Label(
+            self.dcwin,
+            style="sub.TLabel",
+            text="Enter Width"
+        )
+        self.widthentry = ttk.Entry(
+            self.dcwin
+        )
+        self.diameterentrylabel = ttk.Label(
+            self.dcwin,
+            style="sub.TLabel",
+            text="Enter Diameter"
+        )
+        self.diameterentry = ttk.Entry(
+            self.dcwin
+        )
+        if self.chosenshape == "Cube":
+            self.widthentrylabel.pack()
+            self.widthentry.pack()
+            self.lengthentrylabel.pack()
+            self.lengthentry.pack()
+        else:
+            self.diameterentrylabel.pack()
+            self.diameterentry.pack()
+        self.calculatebutt = ttk.Button(
+            self.dcwin,
+            style="button.TButton",
+            text="Calculate!",
+            command=self.dragcalc  
+        ) 
+        self.calculatebutt.pack()  
+        self.dragearealabel = ttk.Label(
+            self.dcwin,
+            style="sub.TLabel",
+            text="Drag Area:"
+        )
+        self.dragecoefficientlabel = ttk.Label(
+            self.dcwin,
+            style="sub.TLabel",
+            text="Drag coefficient:"
+        )
+        self.dragearealabel.pack()
+        self.dragecoefficientlabel.pack()
+        self.dcwin.mainloop()
+    def dragcalc(self):
+        match self.chosenshape:
+            case "Cube/Rectangle":
+                self.dragarea = 0.8*(float(self.lengthentry.get())*float(self.widthentry.get()))
+                self.dragcoefficient = 0.8
+            case "Half-Sphere":
+                self.dragarea = 0.42*((math.pi)*(2*((float(self.diameterentry.get())/2)**2)))
+                self.dragcoefficient = 0.42
+            case "Short-Cylinder":
+                self.dragarea = 1.15*((math.pi)*((float(self.diameterentry.get())/2)**2))
+                self.dragcoefficient = 1.15
+            case "Long-Cylinder":
+                self.dragarea = 0.82*((math.pi)*((float(self.diameterentry.get())/2)**2))
+                self.dragcoefficient = 0.82
+            case "Streamlined-Body":
+                self.dragarea = 0.04*((math.pi)*(4*(float(self.diameterentry.get())**2)))
+                self.dragcoefficient = 0.04
+            case "Streamlined-Half-Body":
+                self.dragarea = 0.09*((math.pi)*(4*(float(self.diameterentry.get())**2)))
+                self.dragcoefficient = 0.09
+        self.dragearealabel.config(text="Drag Area: " +str(round(self.dragarea,1))+"m^2")
+        self.dragecoefficientlabel.config(text="Drag Coefficient: " +str(self.dragcoefficient))
+        self.speeds = []
+        self.forces = []
+        for i in range (0,41,1):
+            self.speeds.append(i)
+            self.forces.append(self.forcecalc(i))
+        plt.plot(self.speeds,self.forces)
+        plt.xlabel("Speed (m/s)")
+        plt.ylabel("Force (kN)")
+        plt.title("Force vs Speed")
+        plt.show()
+    def forcecalc(self,speed):
+        return((math.floor(0.5*1.2*self.dragarea*(speed**2)))/1000)
+        
+
+master = tk.Tk(
+    className=" Drag Calculator"
+)
+
+runapp = App(master)
