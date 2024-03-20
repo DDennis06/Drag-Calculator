@@ -3,21 +3,95 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import math
 import matplotlib.pyplot as plt
+import json
+import glob
+from pathlib import Path
 import os
 ##--------------------------------Main GUI--------------------------------##
 class objtosave():
-    def __init__(self,givenname,givenshape,givencoefficient,givendiameter):
+    def __init__(self,givenname,givenshape,givencoefficient,givendiameter,givenlength,givenwidth):
         self.name = givenname
         self.shape = givenshape
-        self.givencoefficient = givencoefficient
+        self.coefficient = givencoefficient
         self.diameter = givendiameter
+        self.length = givenlength
+        self.width = givenwidth
 class App():
     def __init__(self,master):
+        
+        self.startupwin = master
+        self.titlelabel_start = ttk.Label(
+            self.startupwin,
+            style="title.TLabel",
+            text="Drag Coefficient Calculator"
+        )
+        self.loaded = False
+        style = ttk.Style()
+        style.configure("title.TLabel",font=("Arial",30))
+        style.configure("button.TButton",font=("Arial",15))
+        style.configure("sub.TLabel",font=("Arial",20))    
+        style.configure("text.TLabel",font=("Arial",15)) 
+        self.newbutt = ttk.Button(
+            self.startupwin,
+            style="button.TButton",
+            text="Create New Object",
+            command=self.newobject
+        )
+        self.oldbutt = ttk.Button(
+            self.startupwin,
+            style="button.TButton",
+            text="Use Old Object",
+            command=self.oldobject  
+        )
+        self.titlelabel_start.pack()
+        self.newbutt.pack()
+        self.oldbutt.pack()
+        self.startupwin.mainloop()
+    def oldobject(self):
+        self.oldwin = tk.Toplevel(self.startupwin)
+        style = ttk.Style()
+        style.configure("title.TLabel",font=("Arial",30))
+        style.configure("button.TButton",font=("Arial",15))
+        style.configure("sub.TLabel",font=("Arial",20))    
+        style.configure("text.TLabel",font=("Arial",15)) 
+        self.titlelabel_oldwin = ttk.Label(
+            self.oldwin,
+            style="title.TLabel",
+            text="Select Object:"
+        )
+        self.objectfiles_var= tk.StringVar()
+        self.objectfiles= ttk.Combobox(
+            self.oldwin, 
+            textvariable=self.objectfiles_var
+        )
+        self.files = []
+        self.objectfiles["values"] = (self.files)
+        self.objectfiles['state'] = 'readonly'
+        self.objectfiles.bind("<<ComboboxSelected>>", self.objectboxvalue)
+        self.importbutt= ttk.Button(
+            self.oldwin,
+            text="Import Objects",
+            style="button.TButton",
+            command=self.importfiles
+        )
+        self.contbutt = ttk.Button(
+            self.oldwin,
+            style="button.TButton",
+            text="Continue With Selected Object",
+            command=self.load
+        )
+        self.titlelabel_oldwin.pack()
+        self.objectfiles.pack()
+        self.importbutt.pack()
+        self.contbutt.pack()
+    def objectboxvalue(self,event):
+        self.chosenfile =  self.objectfiles.get()
+    def newobject(self):
         self.chosenshape = ""
         self.dragcoefficient = 0.0
         self.shapename = ""
         self.shapes = ["Half-Sphere","Cube/Rectangle","Long-Cylinder","Short-Cylinder","Streamlined-Body","Streamlined-Half-Body",]
-        self.homewin = master
+        self.homewin = tk.Toplevel(self.startupwin)
         style = ttk.Style()
         style.configure("title.TLabel",font=("Arial",30))
         style.configure("button.TButton",font=("Arial",15))
@@ -27,7 +101,7 @@ class App():
         self.titlelabel = ttk.Label(
             self.homewin,
             style="title.TLabel",
-            text="Drag Coefficient Calculator"
+            text="Create Object"
         )
         self.shapeselectorlabel = ttk.Label(
             self.homewin,
@@ -59,13 +133,14 @@ class App():
         self.shapeselectorlabel.pack()
         self.shapeselector.pack()
         self.enterbutt_howin.pack()
-        self.homewin.mainloop()
+        
     def shapeselectorvaluefinder(self,event):
         self.chosenshape =  self.shapeselector.get()
     def dragcalcwin(self):
         self.dcwin = tk.Toplevel(
-            self.homewin
+            self.startupwin
         )
+
         style = ttk.Style()
         style.configure("title.TLabel",font=("Arial",30))
         style.configure("button.TButton",font=("Arial",15))
@@ -120,29 +195,67 @@ class App():
             style="sub.TLabel",
             text="Drag coefficient:"
         )
+        self.savebutt = ttk.Button(
+            self.dcwin,
+            style="button.TButton",
+            text="Save",
+            command=self.save  
+        ) 
+        try:
+            self.diameterentry.insert(0,self.loadedobject.diameter)
+
+        except:
+            self.diameterentry.insert(0,"")
+            
         self.dragearealabel.pack()
         self.dragecoefficientlabel.pack()
+        self.savebutt.pack()
         self.dcwin.mainloop()
     def dragcalc(self):
-        match self.chosenshape:
-            case "Cube/Rectangle":
-                self.dragarea = 0.8*(float(self.lengthentry.get())*float(self.widthentry.get()))
-                self.dragcoefficient = 0.8
-            case "Half-Sphere":
-                self.dragarea = 0.42*((math.pi)*(2*((float(self.diameterentry.get())/2)**2)))
-                self.dragcoefficient = 0.42
-            case "Short-Cylinder":
-                self.dragarea = 1.15*((math.pi)*((float(self.diameterentry.get())/2)**2))
-                self.dragcoefficient = 1.15
-            case "Long-Cylinder":
-                self.dragarea = 0.82*((math.pi)*((float(self.diameterentry.get())/2)**2))
-                self.dragcoefficient = 0.82
-            case "Streamlined-Body":
-                self.dragarea = 0.04*((math.pi)*(4*(float(self.diameterentry.get())**2)))
-                self.dragcoefficient = 0.04
-            case "Streamlined-Half-Body":
-                self.dragarea = 0.09*((math.pi)*(4*(float(self.diameterentry.get())**2)))
-                self.dragcoefficient = 0.09
+        if self.loaded == False:
+            match self.chosenshape:
+                case "Cube/Rectangle":
+                    self.dragarea = 0.8*(float(self.lengthentry.get())*float(self.widthentry.get()))
+                    self.dragcoefficient = 0.8
+                case "Half-Sphere":
+                    self.dragarea = 0.42*((math.pi)*(2*((float(self.diameterentry.get())/2)**2)))
+                    self.dragcoefficient = 0.42
+                case "Short-Cylinder":
+                    self.dragarea = 1.15*((math.pi)*((float(self.diameterentry.get())/2)**2))
+                    self.dragcoefficient = 1.15
+                case "Long-Cylinder":
+                    self.dragarea = 0.82*((math.pi)*((float(self.diameterentry.get())/2)**2))
+                    self.dragcoefficient = 0.82
+                case "Streamlined-Body":
+                    self.dragarea = 0.04*((math.pi)*(4*(float(self.diameterentry.get())**2)))
+                    self.dragcoefficient = 0.04
+                case "Streamlined-Half-Body":
+                    self.dragarea = 0.09*((math.pi)*(4*(float(self.diameterentry.get())**2)))
+                    self.dragcoefficient = 0.09
+        else:
+            match self.loadedobject.shape:
+                case "Cube/Rectangle":
+                    self.dragarea = 0.8*(float(self.loadedobject.length)*float(self.loadedobject.width))
+                    self.dragcoefficient = 0.8
+                case "Half-Sphere":
+                    self.dragarea = 0.42*((math.pi)*(2*((float(self.loadedobject.diameter)/2)**2)))
+                    self.dragcoefficient = 0.42
+                case "Short-Cylinder":
+                    self.dragarea = 1.15*((math.pi)*((float(self.loadedobject.diameter)/2)**2))
+                    self.dragcoefficient = 1.15
+                case "Long-Cylinder":
+                    self.dragarea = 0.82*((math.pi)*((float(self.loadedobject.diameter)/2)**2))
+                    self.dragcoefficient = 0.82
+                case "Streamlined-Body":
+                    self.dragarea = 0.04*((math.pi)*(4*(float(self.loadedobject.diameter)**2)))
+                    self.dragcoefficient = 0.04
+                case "Streamlined-Half-Body":
+                    self.dragarea = 0.09*((math.pi)*(4*(float(self.loadedobject.diameter)**2)))
+                    self.dragcoefficient = 0.09
+            self.chosenshape = self.loadedobject.shape
+            self.loaded = False
+            self.dragcalcwin()
+            
         self.dragearealabel.config(text="Drag Area: " +str(round(self.dragarea,1))+"m^2")
         self.dragecoefficientlabel.config(text="Drag Coefficient: " +str(self.dragcoefficient))
         self.speeds = []
@@ -157,10 +270,74 @@ class App():
         plt.show()
     def forcecalc(self,speed):
         return((math.floor(0.5*1.2*self.dragarea*(speed**2)))/1000)
-        
+    def save(self):
+        self.shapename = str(self.shapenameentry.get())
+        #pulls data from input and makes a player using object
+        if self.chosenshape == "Cube/Rectangle":
+            obj = objtosave(self.shapename,self.chosenshape,self.dragcoefficient,0,self.lengthentry.get(),self.widthentry.get)
+        else:
+            obj = objtosave(self.shapename,self.chosenshape,self.dragcoefficient,self.diameterentry.get(),0,0)
+        #converts object to json to be saved 
+        try:
+            base = Path("L:/DragCalc")
+            jsonpath = base / (self.shapename+".json")
+            jsonStr = json.dumps(obj.__dict__)
+            base.mkdir(exist_ok=True)
+            with open(jsonpath,"w") as outfile:
+                outfile.write(jsonStr)  
+        except:
+            base = Path("C:/DragCalc")
+            jsonpath = base / (self.shapename+".json")
+            jsonStr = json.dumps(obj.__dict__)
+            base.mkdir(exist_ok=True)
+            with open(jsonpath,"w") as outfile:
+                outfile.write(jsonStr) 
+    def importfiles(self):
+        self.foundfiles = []
+        try:
+            p = Path("L:/DragCalc")
+            os.chdir(p)
+            for file in glob.glob("*.json"):
+                if file not in self.foundfiles:
+                    self.foundfiles.append(file.replace(".json",""))
+            self.objectfiles["values"] = self.foundfiles
+        except:
+            p = Path("C:/DragCalc")
+            os.chdir(p)
+            for file in glob.glob("*.json"):
+                if file not in self.foundfiles:
+                    self.foundfiles.append(file.replace(".json",""))
+            self.objectfiles["values"] = self.foundfiles
+    def load(self):
+        try:
+            base = Path("L:/DragCalc")
+            jsonpath = base / (self.chosenfile+".json")
+            pfile = open(jsonpath)
+            objectsave = json.load(pfile)
+            self.loadedobject = objtosave(objectsave["name"],objectsave["shape"],objectsave["coefficient"],objectsave["diameter"],objectsave["length"],objectsave["width"])
+            self.loaded = True
+            self.dragcalc()
+        except:
+            base = Path("C:/DragCalc")
+            jsonpath = base / (self.chosenfile+".json")
+            pfile = open(jsonpath)
+            objectsave = json.load(pfile)
+            self.loadedobject = objtosave(objectsave["name"],objectsave["shape"],objectsave["coefficient"],objectsave["diameter"],objectsave["length"],objectsave["width"])
+            self.loaded = True
+            self.dragcalc()
 
 master = tk.Tk(
     className=" Drag Calculator"
 )
-
+def startup():
+    #create player folder
+    try:
+        path = "L:/DragCalc"
+        if not os.path.exists(path):
+            os.makedirs(path)        
+    except:
+        path = "C:/DragCalc"
+        if not os.path.exists(path):
+            os.makedirs(path)
+startup()
 runapp = App(master)
