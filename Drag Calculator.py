@@ -173,7 +173,7 @@ class App():
         self.dragearealabel.config(text="Drag Area: " +str(round(self.dragarea,1))+"m^2")
         self.speeds = []
         self.forces = []
-        for i in range (0,41,1):
+        for i in range (0,21,1):
             self.speeds.append(i)
             self.forces.append(self.forcecalc(i))
         plt.plot(self.speeds,self.forces)
@@ -187,6 +187,7 @@ class App():
         self.shapename = str(self.shapenameentry.get())
         #pulls data from input and makes a player using object
         obj = objtosave(self.shapename,self.dragcoefficiententry.get,self.frontalareaentry.get())
+        print(obj)
         #converts object to json to be saved 
         try:
             base = Path("L:/DragCalc")
